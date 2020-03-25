@@ -22,9 +22,9 @@ nav_lists:
   - titles:
       en: About
     url: /about.html
-#  - titles:
-#      en: TopCoder
-#    url: /topcoder.html
+  - titles:
+      en: Atcoder
+    url: /atcoder.html
 
 
 ## GitHub repository (if the site is hosted by GitHub) ##
@@ -38,10 +38,10 @@ timezone: Asia/Shanghai #see https://en.wikipedia.org/wiki/List_of_tz_database_t
 ## Author & social ##
 author:
   name: fukua95
-  email: xxx@yyy.com
+  email: fukua95@gmail.com
   # facebook:  #your Facebook username
   # twitter:  #your Twitter username
-  #github:  sd-invol
+  github:  fukua95
   # googleplus:  #your Google+ username
   # weibo:  #your Weibo username
   # douban:  #your Douban username
