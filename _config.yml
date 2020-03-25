@@ -20,11 +20,11 @@ description: > #this means to ignore newlines until "nav_lists:"
 
 nav_lists:
   - titles:
-      en: About
-    url: /about.html
-  - titles:
       en: Atcoder
     url: /atcoder.html
+  - titles:
+      en: About
+    url: /about.html
 
 
 ## GitHub repository (if the site is hosted by GitHub) ##
