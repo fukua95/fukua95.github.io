@@ -3,8 +3,8 @@ layout: post
 title: "Designing Data Intensive Applications"
 author: fukua95
 tags: ["distributed system"]
-category: 
-key: 100011
+category: system
+key: 100006
 ---
 
 # Part1 Foundations of Data System  
