@@ -1,0 +1,5 @@
+{%- if __path contains 'http://' or __path contains 'https://' -%}
+  {%- assign __return = __path -%}
+{%- else -%}
+  {%- assign __return = __path | replace:'index.html','' | prepend: site.baseurl | replace:'//','/' -%}
+{%- endif -%}
