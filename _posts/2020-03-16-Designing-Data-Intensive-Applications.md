@@ -22,6 +22,7 @@ todo.
 Replication: 复制,把数据的多个副本放到多台机器上,这些机器通过网络连接.  
 - 对于分布式Blob存储系统, 接口只有Put/Get/Delete，数据Put后不再改变, 保持多个副本的一致性比较简单.  
 - 对于分布式数据库系统, 会有各种数据Update操作, 保持多个副本的一致性比较难.  
+  
 保持多个副本的一致性的算法可以分类:  
 * single-leader replication.  
 * multi-leader replication.  
