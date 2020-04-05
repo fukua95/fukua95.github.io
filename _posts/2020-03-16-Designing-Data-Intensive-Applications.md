@@ -94,13 +94,32 @@ Monotonic Read: 用户发了2个读请求, 保证第2个读请求的结果不会
 * 在client层处理这种不一致状态, 但这样代码会很复杂和dirty, 不建议这样处理.  
 * 改用能提供更强的一致性的系统.  
   
-### Multi-leader Replication  
-  
+### Multi-leader Replication   
 #### Use Cases for Multi-Leader Replication  
+- Multi-datacenter operation  
+  把数据副本放到多个datacenter的好处是, 可以容忍整个datacenter出现故障, 和减少用户访问系统的延时.  
+  这时可以采用multi-leader模式, 每一个datacenter一个leader. 与single-leader模式的对比:  
+  1.性能上, 一个write request发给它所在的datacenter的leader, leader再异步发给其他datacenter的leaders, 所以client不需要等待跨datacenter的网络延时.  
+  2.single-leader模式的leader所在的datacenter故障, 需要重新选举, 但是multi-leader不需要.  
+  3.不同datacenter通过公有网络, 而同一个datacenter里面一般是局域网络, 速度更快.  
+- Clients with offline operation / Collaborative editing  
+  如果一个应用在连接不上网络时照样需要工作, 或者像Google Docs这种允许多个人同时编辑一个doc的应用, 可以考虑multi-leader模式.  
+  
 #### Handling write conflicts  
+Multi-leader replication的最大问题就是会出现写冲突.  
+比如, 2个人同时编辑一个wiki页面, user_1把标题A改成B, user_2同时把它改成C, 2个改动都在他们访问的leader修改成功了, 在把改动异步复制给所有replica时, 就检测到写冲突了.  
+* 最简单的策略: 避免冲突. 
+* 给每一个write request分配一个unique id, 再出现写冲突时, 选取id最大的write request.  
+* 系统把写冲突的解决方案留给使用者去写.  
+  
 #### Multi-Leader Replication Topologies  
+在multi-leader replication系统中, 还需要考虑leader之间的复制顺序, 比如:  
+- all-to-all topology, 每一个leader收到一个write request, 都会转发给所有leader.  
+- circular topology, leader之间以固定的环状方式转发, 比如, leader1 -> leader2 -> leader3.  
+- star topology, 类似菊花图, 以一个leader为中心.   
   
 ### Leaderless Replication  
+Leaderless replication模式, 每一个replica都能直接接收client的write request.  
   
 #### Writing to the Database When a Node Is Down  
 #### Limitations of Quorum Consistency  
