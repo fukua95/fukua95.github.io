@@ -127,6 +127,63 @@ Leaderless replication模式, 每一个replica都能直接接收client的write r
 #### Detecting Concurrent Writes  
   
 ## Ch6.Partitioning  
+Partition: 把数据库的数据划分成多个部分，每一个部分放到不同的node上.  
+优点:  
+* scalability: 把数据分割放到不同的机器上，分摊query load.  
+* 数据量太大，单台机器放不下所有数据.  
+  
+需要考虑的点:  
+- 怎么划分数据？比如k-v能不能按照k取模来划分.  
+- 当集群节点加/减时，怎么做rebalance.  
+  
+### Partitioning of Key-Value Data  
+我们需要考虑: 怎么划分数据? 即每一条数据要存储到哪一个partition?  
+分区的目的是让多个node分摊query load，但是不合理的划分方式让分区失去意义. 极端例子, 所有的热点数据都放到同一个partition中，导致这个partition的query load非常高，其他的非常低.  
+* 最"简单"的划分方式就是随机  
+  但随机的问题是：read query时很难确定数据在哪个partition中.  
+* 以key range划分  
+  优点: 支持range query  
+  缺点: 怎么划分range? 和key的分布相关性大  
+* 以 Hash of Key划分  
+  优点: 选择好的hash function, 所有分区基本分摊query load.  
+  缺点: 不支持range query  
+  
+### Skewed Workloads and Relieving Hot Spots  
+hot spot: 如果绝大部分query都基中在一个partition中，称这个partition为hot spot.  
+合理的划分方式可以减少hot spot，但无法完全避免. 场景: 所有的read/write集中在一个key上.  
+例子: weibo某个大明星引发非常多的讨论(这时候key可能是大明星的user id, 或讨论主题的id).  
+目前大部分数据库都无法自动处理这种非常倾斜的query， 需要数据库的使用者自己处理这种情况.  
+做法举例: 使用者知道一小部分的key的查询频率特别高, 可以在这些key的开头拼接也给随机数, 如果随机数是2位数的话, 
+也能把每个key的所有write操作分摊到100个key, 也就分摊到多个分区上. 不过, 对应的read也需要read 100个key并合并结果.  
+  
+### Partitioning and Secondary Indexes  
+secondary index: A secondary index usually doesn't identify a record uniquely but rather is a way of searching for 
+occurrences of a particular value: find all articles containing the word hogwash, find all cars whose color is read, and so on.  
+* partitioning secondary indexes by document  
+* partitioning secondary indexes by term  
+  
+### Rebalancing Partitions  
+随着时间推移, 一个数据库会有以下变化:  
+1. query吞吐量增加，需要加更多cpu来处理负载.  
+2. 数据量增加，需要加更多磁盘内存来存储数据.  
+3. 用新机器来替代坏了的机器.  
+  
+以上场景都要求data/request从一个node迁移到另一个node.  
+把集群内的data/request从一个node迁移到另一个node的过程称为**rebalanci**ng.  
+  
+系统在rebalancing时要做到:  
+* rebalancing后,系统的负载(data storage, read / write requests)在集群的nodes中比较均匀.  
+* reblancing的过程，系统依然能够提供服务.  
+* 非必要迁移的数据，保持不动，才能最小化网络/磁盘io的负载，加快迁移速度.  
+  
+#### Strategies for Rebalancing  
+rebalancing的策略和系统的partitioning方式有很大的关系.  
+  
+### Request Routing  
+
+  
+### Parallel Query Execution  
+  
 ## Ch7.Transactions  
 ## Ch8.The Trouble with Distributed System  
 ## Ch9. 
