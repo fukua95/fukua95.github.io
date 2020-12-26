@@ -195,7 +195,25 @@ rebalancing的策略和系统的partitioning方式有很大的关系.
 * 允许client连接任何node，如果一个node发现自己不能处理这个request，会转发给合适的node.  
 * 所有reqeust都转发给一个中间服务器，由这个服务器转发request给合适的node.  
    
-## Ch7.Transactions  
+## Ch7.Transactions
+
+### The Concept of a Transaction
+#### The Meaning of ACID
+#### Single-Object and Multi-Object Operations
+
+### Weak Isolation Levels
+#### Read Committed
+#### Snapshot Isolation and Repeatable Read
+#### Preventing Lost Updates
+#### Write Skew and Phantoms
+
+### Serializability
+#### Actual Serial Execution
+#### Two-Phase Locking (2PL)
+#### Serializable Snapshot Isolation (SSI)
+
+### Summary
+
 ## Ch8.The Trouble with Distributed Systems  
 在分布式系统中，任何可能出错的点都会出错.  
    
