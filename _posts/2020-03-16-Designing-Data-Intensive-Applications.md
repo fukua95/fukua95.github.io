@@ -196,9 +196,33 @@ rebalancing的策略和系统的partitioning方式有很大的关系.
 * 所有reqeust都转发给一个中间服务器，由这个服务器转发request给合适的node.  
    
 ## Ch7.Transactions
+### Transaction and ACID
+一个数据库在运行时：  
+* 系统的硬软件在任何时候都有可能故障，包括在一系列写操作的过程。  
+* 系统的用户在任何时候都有可能失去连接(例如用户出现故障)，包括在用户端的一系列操作的过程。    
+* 网络中断会切断系统与用户，系统节点之间的连接。  
+* 多个用户端可能会同时对系统的某一个值进行修改。  
+* 一个用户对某个值修改一半，有另一个用户想读该值。  
+  
+所以数据库编写者需要对以上，和所有可能导致出现问题的情况进行处理。  
+事务是数据库的一个概念。支持事务的数据库把用户的一系列读写操作看作一个逻辑单元，称为一个事务。事务要么执行其全部内容，要么都不执行。
+如果一个事务执行的过程失败了，那事务对数据库造成的任何可能的修改都要撤销。  
+有了事务，用户访问数据库就简单很多，用户不需要处理部分操作失败的问题，因为数据库会帮用户处理.  
+不是所有的数据库都支持事务，不是所有的用户都需要事务。  
 
-### The Concept of a Transaction
-#### The Meaning of ACID
+事务有4个属性，简写为ACID，Atomicity原子性，Consistency一致性，Isolation隔离性，Durability持久性。  
+#### Atomicity 原子性
+一般说atomic, 意思是一个东西不能再被分解成更小的部分。**在cs的很多分支会出现atomic这个词，但是表达的是不同的意思**。  
+比如，在多线程编程的atomic，意思是：If one thread executes an atomic operation, that means there is no way that 
+another thread could see the half-finished result of the operation. The system can only be in the state it was 
+before the operation or after the operation, not something in between.  
+而在ACID中的atomic，和“并发”没有关系。  
+ACID中的atomic，指的是一个事务里的所有操作，要么全部执行成功，要么全部不执行，如果执行到一半有一个操作失败了，就必须撤销这个事务
+对系统的所有修改。  
+
+#### Consistency 一致性
+#### Isolation 隔离性
+#### Durability 持久性
 #### Single-Object and Multi-Object Operations
 
 ### Weak Isolation Levels
