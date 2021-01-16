@@ -218,9 +218,17 @@ another thread could see the half-finished result of the operation. The system c
 before the operation or after the operation, not something in between.  
 而在ACID中的atomic，和“并发”没有关系。  
 ACID中的atomic，指的是一个事务里的所有操作，要么全部执行成功，要么全部不执行，如果执行到一半有一个操作失败了，就必须撤销这个事务
-对系统的所有修改。  
+对系统的所有修改。   
 
 #### Consistency 一致性
+**在cs的很多分支，consistency同样出现很多次, 表达不同的意思**。  
+- ch5讨论的replica concsistency, async replicated systems的eventual consistency.  
+- consistent hashing, 是系统用来使负载均衡的一种方法.  
+- CAP理论(ch9)中的C, consistency, 指的是linearizability.  
+- ACID中的C.  
+  
+
+
 #### Isolation 隔离性
 #### Durability 持久性
 #### Single-Object and Multi-Object Operations
