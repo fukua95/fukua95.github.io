@@ -8,7 +8,33 @@ key: 100006
 ---
 
 # Part1 Foundations of Data System  
-TODO.  
+ 
+## Ch1.Reliability, Scalability, Maintainability
+
+## Ch2.Data Models and Query Languages
+一个复杂的系统一般分成很多个layer，每一层提供给上层interface/data model, 以隐藏复杂度和执行细节. 比如：
+1. 应用后台开发, 会把看到的数据(用户信息，组织，货物，粉丝列表...)建模成对象或数据结构.
+2. 当应用开发想存储对象或数据结构，会把它们转化为更通用的数据模型，比如JSON，XML，数据库的table，图模型.
+3. 存储系统/数据库工程师，负责把JSON/XML/table/graph转化为内存中的字节序列，保存在持久化设备上.
+4. 硬件工程师，负责把字节序列转化为电流.
+  
+本章会讲第2点，通用数据模型，第3章会讲第3点，存储引擎.  
+// Todo  
+
+## Ch3.Storage and Retrieval(检索)
+### Hash Indexes
+### SSTables and LSM-Tree
+### B-Tree
+### Comparing B-Tree and LSM-Tree
+### Other Indexing Structures
+
+### Transaction Processing or Analytics?
+### Column-Oriented Storage
+
+## Ch4.Encoding and Evolution
+### Formats for Encoding Data
+### Modes of Dataflow
+
   
 # Part2 Distributed System  
 为什么需要分布式系统:  
