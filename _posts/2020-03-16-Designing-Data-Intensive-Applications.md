@@ -13,18 +13,44 @@ key: 100006
 
 ## Ch2.Data Models and Query Languages
 一个复杂的系统一般分成很多个layer，每一层提供给上层interface/data model, 以隐藏复杂度和执行细节. 比如：
-1. 应用后台开发, 会把看到的数据(用户信息，组织，货物，粉丝列表...)建模成对象或数据结构.
+1. 应用开发, 会把看到的数据(用户信息，组织，货物，粉丝列表...)建模成对象或数据结构.
 2. 当应用开发想存储对象或数据结构，会把它们转化为更通用的数据模型，比如JSON，XML，数据库的table，图模型.
 3. 存储系统/数据库工程师，负责把JSON/XML/table/graph转化为内存中的字节序列，保存在持久化设备上.
 4. 硬件工程师，负责把字节序列转化为电流.
   
+data model实际就是一种数据格式.  
 本章会讲第2点，通用数据模型，第3章会讲第3点，存储引擎.  
 // Todo  
 
 ## Ch3.Storage and Retrieval(检索)
+应用开发会把数据存储到数据库/存储系统，所以一个数据库/存储系统需要考虑：**怎么保存数据？怎么检索数据？**  
+传统的关系型数据库和NoSQL数据库，底下的存储引擎可以分为2类：
+* log-structured storage engine, 日志结构
+* page-oriented storage engine，面向页面
+  
+note: **The word log is often used to refer to application logs, where an application outputs text that describes 
+what's happening. In this book, log is used in the more general sense: an append-only sequence of records. 
+It doesn't to be human-readable; it might be binary and intended only for other programs to read**.  
+
+以下几行代码就实现了一个简单的kv存储引擎：
+```bash
+#!/bin/bash
+
+db_set() {
+  echo "$1,$2" >> database
+}
+db_get() {
+  grep "^$1," database | sed -e "s/^$1,//" | tail -n 1
+}
+```
+db_set()的效率很高，但是db_get()的复杂度是O(n)的. 为了加快找到data，我们需要一个索引数据结构，本质上就是维护一些元数据(metadata)。
+当然，多维护元数据会增加开销，db_set()时也需要写元数据，降低db_set()的效率.  
+**This is an important trade-off in storage systems: well-chosen indexes speed up read queries, but every index slows down writes**.  
+
 ### Hash Indexes
 ### SSTables and LSM-Tree
 ### B-Tree
+
 ### Comparing B-Tree and LSM-Tree
 ### Other Indexing Structures
 
