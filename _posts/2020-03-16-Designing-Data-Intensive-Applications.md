@@ -292,13 +292,7 @@ ACID的C指的是数据库的某些数据一直保持不变，在没有其他事
   
 所以数据库需要一个并发控制部件来调度事务的并行，使得在某种意义上等价于一个串行调度，称为可串行化调度.  
 可串行化的代价是事务的并发度低，很多场景，client愿意为了提高性能，降低隔离性的级别.  
-SQL标准规定的隔离性级别：
-* 可串行化：通常保证可串行化调度
-* 可重复读
-* 已提交读
-* 未提交读
-  
-这几个隔离级别，在下面有具体介绍.
+SQL标准规定的隔离性级别：可串行化, 可重复读, 已提交读, 未提交读. 这几个隔离级别，在下面有具体介绍.
 
 #### Durability 持久性
 一个事务完成后，它对数据库的修改必须是永久的，即使出现系统故障.  
@@ -324,20 +318,48 @@ SQL标准规定的隔离性级别：
   防止脏写一般用row-lock，一个事务想修改数据(一行或一个对象),需要先获得这个行锁，直到事务提交/中止后才释放行锁.  
   
 隔离级别：
-* 未提交读，read uncommitted: 允许脏读，这是SQL标准允许的最低级别.
+* 未提交读，read uncommitted: 允许脏读，其实等于没有隔离性, 这是SQL标准允许的最低级别.
 * 已提交读，read committed: 只能读已提交数据(不能脏读)，换句话说，就是一个事务的写的数据，必须在事务提交后，新数据才能被其他事务看到.  
       很多数据库运行时的默认隔离级别为已提交读.  
-      
-* 
+* 可重复读，repeatable read: 只能读已提交数据，而且在一个事务2次读取一个数据项期间，其他事务不得更新该数据.
+* 可串行化
+  
+**以上的隔离级别都不允许脏写**.  
 
-#### Read Committed
 #### Snapshot Isolation and Repeatable Read
+快照隔离是一种并发控制机制，每一个事务都从某一个一致的数据库快照中读取数据. 我们把快照看成一个状态，数据库是一个状态机，
+在事务T开始时看到的是状态1，则T的整个执行过程，看到的都是状态1.  
+快照隔离适合的场景：运行时间长的只读查询，比如对数据库做备份.  
+// TODO
+
 #### Preventing Lost Updates
 #### Write Skew and Phantoms
 
 ### Serializability
+可串行化是最强的隔离级别. 单机数据库实现可串行化的3种技术：
+* literally executing transaction in a serial order
+* two-phase locking, which for several decades was the only viable option
+* optimistic concurrency control techniques such as serializable snapshot isolation
+  
 #### Actual Serial Execution
+实现可串行化的最简单方式：真的串行执行事务，不用并发.  
+原因：
+* RAM便宜了，出现了内存数据库，所以事务的平均执行时间很小
+* OLTP事务的场景一般都是做小量的读写操作，串行执行事务性能也不错.
+  
+比如Redis就是单线程，串行执行事务
+
 #### Two-Phase Locking (2PL)
+注意，2PL和2PC(two-phase commit)是2个完全不同的东西，不要混了.  
+MySQL(InnoDB)和SQL Server实现可串行化就是用2PL.  
+2PL的实现：
+* 每一个对象有一个读写锁(偏向读者还是偏向写者看场景)
+* 最关键的一点：**一个事务获得的所有锁，包括读锁和写锁，都必须一直拿着，直到提交/中止后才释放**.  
+  这也是2PL名字的含义：第一阶段，一个事务只拿锁不释放锁；第2阶段，事务在结束时才释放所有的锁.
+  
+由上可见，应该经常有发生死锁的情况，所以数据库需要有一个机制：检测死锁，在发生死锁时中止掉一些事务.
+2PL的缺点：性能不太行，事务的执行时间不稳定.  
+
 #### Serializable Snapshot Isolation (SSI)
 
 ### Summary
@@ -352,8 +374,30 @@ SQL标准规定的隔离性级别：
 
 ### Knowledge, Truth, and Lies  
 
-## Ch9. 
-  
+## Ch9.Consistency and Consensus
+
+### Consistency Guarantees
+
+### Linearizability
+#### what makes a system linearizable
+#### relying on linearizability
+#### implementing linearizability system
+#### the cost of linearizability
+
+### ordering guarantees
+#### ordering and gausality
+#### sequence number ordering 
+#### total order broadcast
+
+### distributed transaction and consensus
+#### atomic commit and two-phase commit
+#### distributed transaction in practice
+#### fault-tolerant consensus
+#### membership and coordination services
+
+# Part3 Derived Data
+
+
 
 
 
