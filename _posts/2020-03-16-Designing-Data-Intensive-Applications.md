@@ -375,28 +375,63 @@ MySQL(InnoDB)和SQL Server实现可串行化就是用2PL.
 ### Knowledge, Truth, and Lies  
 
 ## Ch9.Consistency and Consensus
+**consensus，共识：让所有node在某一件事上达成一致**.  
+正如我们在ch7讲的，一个数据库的运行过程中可能会有各种问题，比如磁盘故障，进程中止等等，但是数据库内部处理了这些问题，
+数据库向用户保证了原子性，隔离性，持久性，所以用户不需要去考虑这些问题.  
+同样地，一个分布式系统会给用户一致性，共识等等的保证，让用户不需要去考虑这些问题.  
+这一章讲的是，一个分布式系统能给用户哪些保证，哪些保证是系统做不到的？
 
 ### Consistency Guarantees
+所有的分布式系统给用户的最低的一致性保证：最终一致性，也就是你向系统写的一个值，最终会在所有的replica上保持一致.  
+当然，这个保证是非常弱的, 因为"最终"没有明确的时间限制，可能是非常非常久.  
+系统也可以提供更强的一致性保证，代价是系统的更低的性能和更低的可用性，好处是用户需要考虑的异常场景更少.    
 
 ### Linearizability
-#### what makes a system linearizable
+linearizability, 是最强的一致性，在其他书上有其他名字，atomic consistency, strong consistency, immediate consistency, external consistency. 
+意思：一旦一个client向系统写一个值成功，**所有client**从系统读这个值都是一致最新的，系统看上去就像只有一个replica.  
+
 #### relying on linearizability
-#### implementing linearizability system
-#### the cost of linearizability
+哪些场景必须使用保证了linearizability一致性的系统呢？
+* 分布式锁和leader选举
+  一个单leader多副本系统，需要选举leader，一种选举leader的方式：使用锁，每个node向一个锁系统请求锁，拿到锁的node成为leader.  
+  这个锁系统必须是linearizability的，不然会发生脑裂.
+* 唯一性约束
+  唯一性约束在系统是很常见的，比如文件存储系统的一个文件名唯一确定一个文件，当2个client并发创建同样的文件名时，其中一个必须失败.  
+  
+#### the cost of linearizability 
+Consistency(指强一致性)，Availability(高可用性), Partition tolerance(分区容忍性).  
+高可用性不是看client发请求到收到回复的时间有多快，而是指在系统某一部分发生错误的情况下，整个系统依然可以使用，不需要停止服务.  
+CAP定理：**either Consistent or Available when Partitioned**, 也就是，当出现网络分区时，强一致性和高可用性，系统只能保证一个.  
+
+强一致性虽然是一个很好的保证，但实际上很少有系统默认强一致性.  
+比如，现代multi-core CPU的RAM也不是强一致性的. 假设core1的线程A写一个值到一个内存位置addr，core2的线程B去读这个addr, 系统不保证B能读到刚才A写的值，
+除非使用memory barrier. 原因是每个core有自己的cache, 而A写到cache的值是异步写到RAM的. cache的修改为什么不同步写到RAM呢？为了更好的性能.  
+同样，很多分布式系统为什么不提供强一致性呢？为了性能.  
 
 ### ordering guarantees
+// TODO
 #### ordering and gausality
 #### sequence number ordering 
 #### total order broadcast
 
 ### distributed transaction and consensus
+共识，让多个node对某一件事达成一致. 分布式系统的很多场景都需要共识：
+* leader选举，单leader系统，所有node对谁是leader需要达成一致.
+* atomic commit, 实现分布式事务的原子性
+  
 #### atomic commit and two-phase commit
+// TODO
 #### distributed transaction in practice
+// TODO
+
 #### fault-tolerant consensus
+共识的标准定义：**one or more nodes may propose values, and the consensus algorithm decides on one of those values**.  
+
+
 #### membership and coordination services
 
 # Part3 Derived Data
-
+// TODO
 
 
 
