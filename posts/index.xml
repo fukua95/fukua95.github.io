@@ -6,14 +6,21 @@
     <description>Recent content in Posts on fukua95</description>
     <generator>Hugo -- gohugo.io</generator>
     <language>en-us</language>
-    <lastBuildDate>Wed, 05 Jun 2024 21:49:12 +0800</lastBuildDate><atom:link href="https://fukua95.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>Sat, 13 Jul 2024 15:28:13 +0800</lastBuildDate><atom:link href="https://fukua95.github.io/posts/index.xml" rel="self" type="application/rss+xml" />
     <item>
-      <title>Init</title>
-      <link>https://fukua95.github.io/posts/init/</link>
-      <pubDate>Wed, 05 Jun 2024 21:49:12 +0800</pubDate>
+      <title>Redis 源码分析</title>
+      <link>https://fukua95.github.io/posts/redis/</link>
+      <pubDate>Sat, 13 Jul 2024 15:28:13 +0800</pubDate>
       
-      <guid>https://fukua95.github.io/posts/init/</guid>
-      <description></description>
+      <guid>https://fukua95.github.io/posts/redis/</guid>
+      <description>Util Async Event Library 监听 读写流程  新请求连接 解析命令 执行命令 发送回复   Server&amp;rsquo;s DB 设计 数据结构  Redis 是(国内?)互联网最常用的系统之一，而且很多公司有自己的定制版。
+在高性能的前提下，我觉得 Redis 的接口设计是它能从 KV 系统中脱颖而出的原因之一，Redis 支持 hash table, set, list 等数据结构，定位是一个远程数据结构，使 Redis 有更多使用场景。
+类似 S3, Redis API 被称为 Redis 协议，很多 KV 系统都支持 Redis 协议。
+这篇笔记梳理了 Redis 源码，希望能帮助在看 Redis 源码的人。
+Util lzf[.h/_c.c]实现 lzf 压缩算法，RDB 持久化时默认会使用 lzf 压缩 key&amp;amp;value。
+zmalloc.[h/c] malloc wrapper, 会记录使用的内存量。
+sds.[h/c]实现变长字符串类型，可以认为是简化的 std::string, 很多 buffer 的类型用 sds，分配内存空间的策略:
+ 创建对象时，根据指定的长度申请内存 变长，剩余长度不足时，会重新申请 (len + add_len) * 2 的内存  anet.</description>
     </item>
     
   </channel>
