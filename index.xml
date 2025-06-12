@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>cxljs</title>
+    <link>https://cxljs.github.io/</link>
+    <description>Recent content on cxljs</description>
+    <generator>Hugo</generator>
+    <language>en-us</language>
+    <lastBuildDate>Sun, 09 Mar 2025 17:36:52 +0800</lastBuildDate>
+    <atom:link href="https://cxljs.github.io/index.xml" rel="self" type="application/rss+xml" />
+    <item>
+      <title>LevelDB #1 WAL</title>
+      <link>https://cxljs.github.io/posts/leveldb-1-wal/</link>
+      <pubDate>Sun, 09 Mar 2025 17:36:52 +0800</pubDate>
+      <guid>https://cxljs.github.io/posts/leveldb-1-wal/</guid>
+      <description>&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#leveldb-overview&#34;&gt;LevelDB Overview&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#wal&#34;&gt;WAL&lt;/a&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#log-file-format&#34;&gt;Log File Format&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#log-writer&#34;&gt;Log Writer&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#log-reader&#34;&gt;Log Reader&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;h1 id=&#34;leveldb-overview&#34;&gt;LevelDB Overview&lt;/h1&gt;&#xA;&lt;p&gt;lsm-tree 设计思路：&lt;/p&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;写日志，从而把写操作变成磁盘顺序写&lt;/li&gt;&#xA;&lt;li&gt;写先存储在内存，再批量写入新文件，保证每个文件的数据有序，方便合并，删除失效数据&lt;/li&gt;&#xA;&lt;li&gt;分层合并策略&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;p&gt;LevelDB 是 BigTable 的存储引擎，是最早流行的使用 lsm-tree 的存储引擎。&lt;/p&gt;&#xA;&lt;p&gt;LevelDB 架构图(在网上广为流传，应该是出自 MS 的一篇文章):&#xA;&lt;img src=&#34;img/arch.png&#34; alt=&#34;&#34;&gt;&lt;/p&gt;&#xA;&lt;p&gt;LevelDB 系列文章的顺序：&lt;/p&gt;&#xA;&lt;ol&gt;&#xA;&lt;li&gt;WAL&lt;/li&gt;&#xA;&lt;li&gt;MemTable&lt;/li&gt;&#xA;&lt;li&gt;SSTables 格式，压缩、合并&lt;/li&gt;&#xA;&lt;li&gt;其他工程优化：Bloom Filter, Block Cache, Lock, Env&lt;/li&gt;&#xA;&lt;li&gt;MVCC 并发控制&lt;/li&gt;&#xA;&lt;li&gt;完整读写流程&lt;/li&gt;&#xA;&lt;/ol&gt;&#xA;&lt;h1 id=&#34;wal&#34;&gt;WAL&lt;/h1&gt;&#xA;&lt;p&gt;为了保证 MemTable 的数据不丢失，在写 MemTable 前会先写 WAL，重启时，重放 WAL 恢复 MemTable。正常情况一个 MemTable 对应一个 WAL，WAL 在 MemTable 成功落盘后删除。&lt;/p&gt;&#xA;&lt;p&gt;所以 WAL 应该有2个接口：&lt;code&gt;AddRecord()&lt;/code&gt; 和 &lt;code&gt;Replay()&lt;/code&gt;。&lt;/p&gt;&#xA;&lt;p&gt;LevelDB&amp;rsquo;s WAL 分成 &lt;code&gt;log::Writer&lt;/code&gt; 和 &lt;code&gt;log::Reader&lt;/code&gt; 2个数据结构。&lt;/p&gt;</description>
+    </item>
+    <item>
+      <title>Redis 主流程实现</title>
+      <link>https://cxljs.github.io/posts/redis/</link>
+      <pubDate>Sat, 13 Jul 2024 15:28:13 +0800</pubDate>
+      <guid>https://cxljs.github.io/posts/redis/</guid>
+      <description>&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#util&#34;&gt;Util&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#%E7%BD%91%E7%BB%9C%E6%A1%86%E6%9E%B6&#34;&gt;网络框架&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#%E5%A4%84%E7%90%86%E8%AF%B7%E6%B1%82&#34;&gt;处理请求&lt;/a&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#%E6%8E%A5%E5%8F%97%E6%96%B0%E8%BF%9E%E6%8E%A5&#34;&gt;接受新连接&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#%E8%A7%A3%E6%9E%90%E5%91%BD%E4%BB%A4&#34;&gt;解析命令&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#%E6%89%A7%E8%A1%8C%E5%91%BD%E4%BB%A4&#34;&gt;执行命令&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#%E5%8F%91%E9%80%81%E5%9B%9E%E5%A4%8D&#34;&gt;发送回复&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#servers-db-%E8%AE%BE%E8%AE%A1&#34;&gt;Server&amp;rsquo;s DB 设计&lt;/a&gt;&lt;/li&gt;&#xA;&lt;li&gt;&lt;a href=&#34;#%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84&#34;&gt;数据结构&lt;/a&gt;&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;Redis 是一个 in-memory data structures server, 在互联网应用广泛，常见的使用场景:&lt;/p&gt;&#xA;&lt;ul&gt;&#xA;&lt;li&gt;作为其他系统的缓存，减少其他系统的负载，相比于本地缓存，Redis 可以让多个实例共享缓存的数据&lt;/li&gt;&#xA;&lt;li&gt;对延时要求高的场景&lt;/li&gt;&#xA;&lt;/ul&gt;&#xA;&lt;p&gt;在高性能的前提下，我觉得 Redis 的接口设计是它能从 memcached 等系统中脱颖而出的关键原因，Redis 支持 hash table, set, sorted set, vector set 等数据结构，对用户更加友好，还支持 timeseries, pub/sub, stream 等，使它有更多的使用场景。&lt;/p&gt;&#xA;&lt;p&gt;类似 S3, Redis API 被称为 Redis 协议，很多 KV 系统都支持 Redis 协议，比如阿里的 Tair。&lt;/p&gt;&#xA;&lt;p&gt;Redis 单机的整体架构主要分4个部分：网络框架、线程模型、内存数据结构、持久化。&lt;/p&gt;&#xA;&lt;p&gt;这篇文章讲 Redis 主流程的实现。&lt;/p&gt;&#xA;&lt;h2 id=&#34;util&#34;&gt;Util&lt;/h2&gt;&#xA;&lt;p&gt;&lt;code&gt;lzf[.h/_c.c]&lt;/code&gt;实现 lzf 压缩算法，RDB 持久化时默认使用 lzf 压缩 key&amp;amp;value.&lt;/p&gt;&#xA;&lt;p&gt;&lt;code&gt;zmalloc.[h/c]&lt;/code&gt;是 malloc wrapper, 记录使用的堆内存量。&lt;/p&gt;&#xA;&lt;p&gt;&lt;code&gt;sds.[h/c]&lt;/code&gt;实现变长字符串类型，是内部最常用的数据结构，很多 buffer 的类型是 &lt;code&gt;sds&lt;/code&gt;，分配内存的策略:&lt;/p&gt;</description>
+    </item>
+  </channel>
+</rss>

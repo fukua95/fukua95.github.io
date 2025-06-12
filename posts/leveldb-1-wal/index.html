@@ -1,0 +1,353 @@
+<!doctype html>
+
+
+
+
+
+
+
+<html
+  class="not-ready lg:text-base"
+  style="--bg:#faf8f1"
+  lang="en-us"
+  dir="ltr"
+><head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, shrink-to-fit=no"
+  />
+
+  
+  <title>LevelDB #1 WAL-cxljs</title>
+
+  
+  <meta name="theme-color" />
+
+  <meta name="description" content="
+LevelDB Overview
+WAL
+
+Log File Format
+Log Writer
+Log Reader
+
+
+
+LevelDB Overview
+lsm-tree 设计思路：
+
+写日志，从而把写操作变成磁盘顺序写
+写先存储在内存，再批量写入新文件，保证每个文件的数据有序，方便合并，删除失效数据
+分层合并策略
+
+LevelDB 是 BigTable 的存储引擎，是最早流行的使用 lsm-tree 的存储引擎。
+LevelDB 架构图(在网上广为流传，应该是出自 MS 的一篇文章):
+
+LevelDB 系列文章的顺序：
+
+WAL
+MemTable
+SSTables 格式，压缩、合并
+其他工程优化：Bloom Filter, Block Cache, Lock, Env
+MVCC 并发控制
+完整读写流程
+
+WAL
+为了保证 MemTable 的数据不丢失，在写 MemTable 前会先写 WAL，重启时，重放 WAL 恢复 MemTable。正常情况一个 MemTable 对应一个 WAL，WAL 在 MemTable 成功落盘后删除。
+所以 WAL 应该有2个接口：AddRecord() 和 Replay()。
+LevelDB&rsquo;s WAL 分成 log::Writer 和 log::Reader 2个数据结构。" />
+  <meta name="author" content="cxljs" /><link rel="preload stylesheet" as="style" href="https://cxljs.github.io/main.min.css" />
+
+  
+  <link rel="preload" as="image" href="https://cxljs.github.io/theme.png" />
+
+  
+
+  
+
+  <script
+    defer
+    src="https://cxljs.github.io/highlight.min.js"
+    onload="hljs.initHighlightingOnLoad();"
+  ></script>
+
+  
+  <link
+    rel="icon"
+    href="https://cxljs.github.io/favicon.ico"
+  />
+  <link
+    rel="apple-touch-icon"
+    href="https://cxljs.github.io/apple-touch-icon.png"
+  />
+
+  <meta name="generator" content="Hugo 0.145.0">
+  <meta itemprop="name" content="LevelDB #1 WAL">
+  <meta itemprop="description" content="LevelDB Overview WAL Log File Format Log Writer Log Reader LevelDB Overview lsm-tree 设计思路：
+写日志，从而把写操作变成磁盘顺序写 写先存储在内存，再批量写入新文件，保证每个文件的数据有序，方便合并，删除失效数据 分层合并策略 LevelDB 是 BigTable 的存储引擎，是最早流行的使用 lsm-tree 的存储引擎。
+LevelDB 架构图(在网上广为流传，应该是出自 MS 的一篇文章): LevelDB 系列文章的顺序：
+WAL MemTable SSTables 格式，压缩、合并 其他工程优化：Bloom Filter, Block Cache, Lock, Env MVCC 并发控制 完整读写流程 WAL 为了保证 MemTable 的数据不丢失，在写 MemTable 前会先写 WAL，重启时，重放 WAL 恢复 MemTable。正常情况一个 MemTable 对应一个 WAL，WAL 在 MemTable 成功落盘后删除。
+所以 WAL 应该有2个接口：AddRecord() 和 Replay()。
+LevelDB’s WAL 分成 log::Writer 和 log::Reader 2个数据结构。">
+  <meta itemprop="datePublished" content="2025-03-09T17:36:52+08:00">
+  <meta itemprop="dateModified" content="2025-03-09T17:36:52+08:00">
+  <meta itemprop="wordCount" content="503"><meta property="og:url" content="https://cxljs.github.io/posts/leveldb-1-wal/">
+  <meta property="og:site_name" content="cxljs">
+  <meta property="og:title" content="LevelDB #1 WAL">
+  <meta property="og:description" content="LevelDB Overview WAL Log File Format Log Writer Log Reader LevelDB Overview lsm-tree 设计思路：
+写日志，从而把写操作变成磁盘顺序写 写先存储在内存，再批量写入新文件，保证每个文件的数据有序，方便合并，删除失效数据 分层合并策略 LevelDB 是 BigTable 的存储引擎，是最早流行的使用 lsm-tree 的存储引擎。
+LevelDB 架构图(在网上广为流传，应该是出自 MS 的一篇文章): LevelDB 系列文章的顺序：
+WAL MemTable SSTables 格式，压缩、合并 其他工程优化：Bloom Filter, Block Cache, Lock, Env MVCC 并发控制 完整读写流程 WAL 为了保证 MemTable 的数据不丢失，在写 MemTable 前会先写 WAL，重启时，重放 WAL 恢复 MemTable。正常情况一个 MemTable 对应一个 WAL，WAL 在 MemTable 成功落盘后删除。
+所以 WAL 应该有2个接口：AddRecord() 和 Replay()。
+LevelDB’s WAL 分成 log::Writer 和 log::Reader 2个数据结构。">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2025-03-09T17:36:52+08:00">
+    <meta property="article:modified_time" content="2025-03-09T17:36:52+08:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="LevelDB #1 WAL">
+  <meta name="twitter:description" content="LevelDB Overview WAL Log File Format Log Writer Log Reader LevelDB Overview lsm-tree 设计思路：
+写日志，从而把写操作变成磁盘顺序写 写先存储在内存，再批量写入新文件，保证每个文件的数据有序，方便合并，删除失效数据 分层合并策略 LevelDB 是 BigTable 的存储引擎，是最早流行的使用 lsm-tree 的存储引擎。
+LevelDB 架构图(在网上广为流传，应该是出自 MS 的一篇文章): LevelDB 系列文章的顺序：
+WAL MemTable SSTables 格式，压缩、合并 其他工程优化：Bloom Filter, Block Cache, Lock, Env MVCC 并发控制 完整读写流程 WAL 为了保证 MemTable 的数据不丢失，在写 MemTable 前会先写 WAL，重启时，重放 WAL 恢复 MemTable。正常情况一个 MemTable 对应一个 WAL，WAL 在 MemTable 成功落盘后删除。
+所以 WAL 应该有2个接口：AddRecord() 和 Replay()。
+LevelDB’s WAL 分成 log::Writer 和 log::Reader 2个数据结构。">
+
+  <link rel="canonical" href="https://cxljs.github.io/posts/leveldb-1-wal/" />
+</head>
+<body
+    class="bg-(--bg) text-black antialiased duration-200 ease-out [-webkit-tap-highlight-color:transparent] dark:text-white"
+  ><header
+  class="mx-auto flex h-[4.5rem] max-w-(--w) px-8 whitespace-nowrap lg:justify-center"
+>
+  <div class="relative z-50 flex items-center ltr:mr-auto rtl:ml-auto">
+    <a
+      class="-translate-y-[1px] text-2xl font-medium"
+      href="https://cxljs.github.io/"
+      >cxljs</a
+    >
+    <div
+      class="btn-dark text-[0px] ltr:ml-4 rtl:mr-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]"
+      role="button"
+      aria-label="Dark"
+    ></div>
+  </div>
+
+  <div
+    class="btn-menu relative z-50 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden ltr:-mr-8 rtl:-ml-8"
+    role="button"
+    aria-label="Menu"
+  ></div>
+
+  <script>
+    
+    const htmlClass = document.documentElement.classList;
+    setTimeout(() => {
+      htmlClass.remove('not-ready');
+    }, 10);
+
+    
+    const btnMenu = document.querySelector('.btn-menu');
+    btnMenu.addEventListener('click', () => {
+      htmlClass.toggle('open');
+    });
+
+    
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const lightBg = '#faf8f1'.replace(/"/g, '');
+    const setDark = (isDark) => {
+      metaTheme.setAttribute('content', isDark ? '#000' : lightBg);
+      htmlClass[isDark ? 'add' : 'remove']('dark');
+      localStorage.setItem('dark', isDark);
+    };
+
+    
+    const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (htmlClass.contains('dark')) {
+      setDark(true);
+    } else {
+      const darkVal = localStorage.getItem('dark');
+      setDark(darkVal ? darkVal === 'true' : darkScheme.matches);
+    }
+
+    
+    darkScheme.addEventListener('change', (event) => {
+      setDark(event.matches);
+    });
+
+    
+    const btnDark = document.querySelector('.btn-dark');
+    btnDark.addEventListener('click', () => {
+      setDark(localStorage.getItem('dark') !== 'true');
+    });
+  </script>
+
+  <div
+    class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full flex-col justify-center bg-(--bg) pb-16 duration-200 select-none lg:static lg:h-auto lg:flex-row lg:bg-transparent! lg:pb-0 lg:transition-none"
+  >
+  </div>
+</header>
+<main
+      class="prose prose-neutral dark:prose-invert relative mx-auto min-h-[calc(100vh-9rem)] max-w-(--w) px-8 pt-14 pb-16"
+    ><article>
+  <header class="mb-14">
+    <h1 class="my-0! pb-2.5">LevelDB #1 WAL</h1><div class="text-xs antialiased opacity-60"><time>Mar 9, 2025</time></div></header>
+
+  <section><ul>
+<li><a href="#leveldb-overview">LevelDB Overview</a></li>
+<li><a href="#wal">WAL</a>
+<ul>
+<li><a href="#log-file-format">Log File Format</a></li>
+<li><a href="#log-writer">Log Writer</a></li>
+<li><a href="#log-reader">Log Reader</a></li>
+</ul>
+</li>
+</ul>
+<h1 id="leveldb-overview">LevelDB Overview</h1>
+<p>lsm-tree 设计思路：</p>
+<ol>
+<li>写日志，从而把写操作变成磁盘顺序写</li>
+<li>写先存储在内存，再批量写入新文件，保证每个文件的数据有序，方便合并，删除失效数据</li>
+<li>分层合并策略</li>
+</ol>
+<p>LevelDB 是 BigTable 的存储引擎，是最早流行的使用 lsm-tree 的存储引擎。</p>
+<p>LevelDB 架构图(在网上广为流传，应该是出自 MS 的一篇文章):
+<img src="img/arch.png" alt=""></p>
+<p>LevelDB 系列文章的顺序：</p>
+<ol>
+<li>WAL</li>
+<li>MemTable</li>
+<li>SSTables 格式，压缩、合并</li>
+<li>其他工程优化：Bloom Filter, Block Cache, Lock, Env</li>
+<li>MVCC 并发控制</li>
+<li>完整读写流程</li>
+</ol>
+<h1 id="wal">WAL</h1>
+<p>为了保证 MemTable 的数据不丢失，在写 MemTable 前会先写 WAL，重启时，重放 WAL 恢复 MemTable。正常情况一个 MemTable 对应一个 WAL，WAL 在 MemTable 成功落盘后删除。</p>
+<p>所以 WAL 应该有2个接口：<code>AddRecord()</code> 和 <code>Replay()</code>。</p>
+<p>LevelDB&rsquo;s WAL 分成 <code>log::Writer</code> 和 <code>log::Reader</code> 2个数据结构。</p>
+<h2 id="log-file-format">Log File Format</h2>
+<p>LevelDB 有详细的文档：<a href="https://github.com/google/leveldb/blob/main/doc/log_format.md">Log File Format</a>.</p>
+<p>log file 分成多个 block，block size = 32KB，每个 block 内有多个 record，record 不能跨 block，对于大的数据，需要分成多个 records (first + middle(s) + last)。</p>
+<pre tabindex="0"><code>record header = 
+  checksum: uint32    // crc32 of type and data[]; little-endian
+  length: uint16      // little-endian; block size = 2^16 B = 64KB &gt; 32KB
+  type: uint8         // one of Full, First, Middle, Last
+  data: uint8[length]
+</code></pre><div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#75715e">// db/log_format.h
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">namespace</span> log {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">enum</span> <span style="color:#a6e22e">RecordType</span> {
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// Zero is reserved for preallocated files
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  kZeroType <span style="color:#f92672">=</span> <span style="color:#ae81ff">0</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  kFullType <span style="color:#f92672">=</span> <span style="color:#ae81ff">1</span>,
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// For fragments
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  kFirstType <span style="color:#f92672">=</span> <span style="color:#ae81ff">2</span>,
+</span></span><span style="display:flex;"><span>  kMiddleType <span style="color:#f92672">=</span> <span style="color:#ae81ff">3</span>,
+</span></span><span style="display:flex;"><span>  kLastType <span style="color:#f92672">=</span> <span style="color:#ae81ff">4</span>
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">static</span> <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int</span> kMaxRecordType <span style="color:#f92672">=</span> kLastType;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">static</span> <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int</span> kBlockSize <span style="color:#f92672">=</span> <span style="color:#ae81ff">32768</span>;  <span style="color:#75715e">// 32KB
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span><span style="color:#75715e">// Header is checksum (4 bytes), length (2 bytes), type (1 byte).
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span><span style="color:#66d9ef">static</span> <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">int</span> kHeaderSize <span style="color:#f92672">=</span> <span style="color:#ae81ff">4</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">2</span> <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}  <span style="color:#75715e">// namespace log
+</span></span></span></code></pre></div><h2 id="log-writer">Log Writer</h2>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span><span style="color:#66d9ef">namespace</span> log {
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span><span style="color:#66d9ef">class</span> <span style="color:#a6e22e">Writer</span> {
+</span></span><span style="display:flex;"><span> <span style="color:#66d9ef">public</span><span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// Create a writer that will append data to &#34;*dest&#34;.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// &#34;*dest&#34; must be initially empty.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// &#34;*dest&#34; must remain live while this Writer is in use.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">explicit</span> Writer(WritableFile<span style="color:#f92672">*</span> dest);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// Create a writer that will append data to &#34;*dest&#34;.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// &#34;*dest&#34; must have initial length &#34;dest_length&#34;.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// &#34;*dest&#34; must remain live while this Writer is in use.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  Writer(WritableFile<span style="color:#f92672">*</span> dest, <span style="color:#66d9ef">uint64_t</span> dest_length);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  Writer(<span style="color:#66d9ef">const</span> Writer<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>  Writer<span style="color:#f92672">&amp;</span> <span style="color:#66d9ef">operator</span><span style="color:#f92672">=</span>(<span style="color:#66d9ef">const</span> Writer<span style="color:#f92672">&amp;</span>) <span style="color:#f92672">=</span> <span style="color:#66d9ef">delete</span>;
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  <span style="color:#f92672">~</span>Writer();
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  Status <span style="color:#a6e22e">AddRecord</span>(<span style="color:#66d9ef">const</span> Slice<span style="color:#f92672">&amp;</span> slice);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span> <span style="color:#66d9ef">private</span><span style="color:#f92672">:</span>
+</span></span><span style="display:flex;"><span>  Status EmitPhysicalRecord(RecordType type, <span style="color:#66d9ef">const</span> <span style="color:#66d9ef">char</span><span style="color:#f92672">*</span> ptr, size_t length);
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>  WritableFile<span style="color:#f92672">*</span> dest_;
+</span></span><span style="display:flex;"><span>  <span style="color:#66d9ef">int</span> block_offset_;  <span style="color:#75715e">// Current offset in block
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>
+</span></span><span style="display:flex;"><span>  <span style="color:#75715e">// crc32c values for all supported record types.  These are
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// pre-computed to reduce the overhead of computing the crc of the
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#75715e">// record type stored in the header.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>  <span style="color:#66d9ef">uint32_t</span> type_crc_[kMaxRecordType <span style="color:#f92672">+</span> <span style="color:#ae81ff">1</span>];
+</span></span><span style="display:flex;"><span>};
+</span></span><span style="display:flex;"><span>
+</span></span><span style="display:flex;"><span>}  <span style="color:#75715e">// namespace log
+</span></span></span></code></pre></div><p><code>WritableFile</code> 是在 fd 上封装一个 buffer，减少系统调用次数。</p>
+<p><code>log::Writer</code> 只有一个对外接口 <code>AddRecord()</code>，不需要实现并发安全，由调用者自己保证不会并发调用。<code>AddRecord()</code> 负责把数据分成一个或多个 record data。<code>EmitPhysicalRecord()</code> 负责把一个 record data + record header 写到 <code>dest_</code>.</p>
+<p><code>AddRecord()</code> 保证把数据写到 <code>dest_</code>，但是没有强制落盘，所以系统奔溃可能会导致写的 record 丢失。如果要强制落盘，要设置 <code>options.sync = true</code> 让 <code>DBImpl::Write</code> 调用完 <code>AddRecord()</code> 后调用 <code>logfile_.Sync()</code>。</p>
+<p><code>DBImpl::Write</code> 核心逻辑：</p>
+<div class="highlight"><pre tabindex="0" style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4;"><code class="language-cpp" data-lang="cpp"><span style="display:flex;"><span>    <span style="color:#75715e">// Add to log and apply to memtable.  We can release the lock
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// during this phase since &amp;w is currently responsible for logging
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// and protects against concurrent loggers and concurrent writes
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    <span style="color:#75715e">// into mem_.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>    {
+</span></span><span style="display:flex;"><span>      mutex_.Unlock();
+</span></span><span style="display:flex;"><span>      status <span style="color:#f92672">=</span> log_<span style="color:#f92672">-&gt;</span>AddRecord(WriteBatchInternal<span style="color:#f92672">::</span>Contents(write_batch));
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">bool</span> sync_error <span style="color:#f92672">=</span> false;
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> (status.ok() <span style="color:#f92672">&amp;&amp;</span> options.sync) {
+</span></span><span style="display:flex;"><span>        status <span style="color:#f92672">=</span> logfile_<span style="color:#f92672">-&gt;</span>Sync();
+</span></span><span style="display:flex;"><span>        <span style="color:#66d9ef">if</span> (<span style="color:#f92672">!</span>status.ok()) {
+</span></span><span style="display:flex;"><span>          sync_error <span style="color:#f92672">=</span> true;
+</span></span><span style="display:flex;"><span>        }
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> (status.ok()) {
+</span></span><span style="display:flex;"><span>        status <span style="color:#f92672">=</span> WriteBatchInternal<span style="color:#f92672">::</span>InsertInto(write_batch, mem_);
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>      mutex_.Lock();
+</span></span><span style="display:flex;"><span>      <span style="color:#66d9ef">if</span> (sync_error) {
+</span></span><span style="display:flex;"><span>        <span style="color:#75715e">// The state of the log file is indeterminate: the log record we
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#75715e">// just added may or may not show up when the DB is re-opened.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        <span style="color:#75715e">// So we force the DB into a mode where all future writes fail.
+</span></span></span><span style="display:flex;"><span><span style="color:#75715e"></span>        RecordBackgroundError(status);
+</span></span><span style="display:flex;"><span>      }
+</span></span><span style="display:flex;"><span>    }
+</span></span></code></pre></div><h2 id="log-reader">Log Reader</h2>
+<p>读取 log file。</p>
+</section>
+
+  <nav
+    class="mt-24 flex overflow-hidden rounded-xl bg-black/[3%] text-lg leading-[1.2]! *:flex *:w-1/2 *:items-center *:p-5 *:font-medium *:no-underline dark:bg-white/[8%] [&>*:hover]:bg-black/[2%] dark:[&>*:hover]:bg-white/[3%]"
+  ><a
+      class="justify-end pl-3 ltr:ml-auto rtl:mr-auto"
+      href="https://cxljs.github.io/posts/redis/"
+      ><span>Redis 主流程实现</span><span class="ltr:ml-1.5 rtl:mr-1.5">→</span></a
+    ></nav></article></main><footer
+  class="mx-auto flex h-[4.5rem] max-w-(--w) items-center px-8 text-xs tracking-wider uppercase opacity-60"
+>
+  <div class="mr-auto">&copy;2025<a class="link" href="https://cxljs.github.io/">cxljs</a></div>
+  <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
+    >powered by hugo️️</a
+  >️
+  <a
+    class="link"
+    href="https://github.com/nanxiaobei/hugo-paper"
+    rel="noopener"
+    target="_blank"
+    >hugo-paper</a
+  >
+</footer>
+</body>
+</html>
