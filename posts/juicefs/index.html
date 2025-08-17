@@ -1,0 +1,331 @@
+<!doctype html>
+
+
+
+
+
+
+
+<html
+  class="not-ready lg:text-base"
+  style="--bg:#faf8f1"
+  lang="en-us"
+  dir="ltr"
+><head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, shrink-to-fit=no"
+  />
+
+  
+  <title>JuiceFS 设计-cxljs</title>
+
+  
+  <meta name="theme-color" />
+
+  <meta name="description" content="
+分布式文件系统的发展
+分布式文件系统的难点
+JuiceFS
+
+存储文件数据
+元数据结构设计
+读写流程
+
+
+
+分布式文件系统的发展
+Google GFS 的发表应该是分布式文件系统发展的里程碑，Meta &#43; Data 的架构影响了后来的分布式系统设计。随后的 HDFS 是大数据时代最重要的存储系统之一，现在分布式文件系统最流行的2种接口协议是 POSIX 和 HDFS 接口协议。
+随着云原生和对象存储的发展，分布式系统的设计趋势是把数据放到对象存储，比如 autoMQ 把 Kafka 的数据放到对象存储，AWS 刚发布的基于对象存储的向量数据库。
+对分布式文件系统的需求也有变化，相比大数据时代，AI 训练存储的更多是中小文件，所以文件系统的元数据更多。
+分布式文件系统的难点
+文件系统的元数据组成一个 DAG，分布式文件系统的难点在于：
+
+怎么存储这个 DAG？
+怎么高并发的读写这个 DAG？
+
+几种思路：
+
+整个 DAG 存储在单个节点，缺点是单节点容量有限，DAG size 成为系统瓶颈。
+转化为 KV/Relation 存储在 KV/Relational DB。
+设计一个可扩展的存储 DAG 的系统，把 DAG 划分存储到多个节点，目前没有这样做的开源项目(?)，但是有相关的论文，应该有公司实现了/在做这个。
+不采用 Meta &#43; Data 架构，把 Meta 和 Data 混合存储。
+
+JuiceFS
+JuiceFS 的元数据采用第2种思路，支持 TiKV/MySQL 等多个系统作为 Meta Service，甚至还支持 Redis (在一致性要求不高的场景使用)，数据放在对象存储。
+架构：
+app         go-fuse --&gt; juicefs --&gt; local meta cache --&gt; meta service
+ |            |            |
+syscall      fd             --&gt; local data cache --&gt; object storage service
+ |            |
+vfs    --&gt;   fuse
+存储文件数据
+当写文件时，元数据放在 Meta Service，数据放在对象存储。如果一个文件作为一个对象去存储，当读一部分/修改文件时，会有严重的读写放大，特别是大文件，所以需要把文件划分成多个对象去存储。" />
+  <meta name="author" content="cxljs" /><link rel="preload stylesheet" as="style" href="https://cxljs.github.io/main.min.css" />
+
+  
+  <link rel="preload" as="image" href="https://cxljs.github.io/theme.png" />
+
+  
+
+  
+
+  <script
+    defer
+    src="https://cxljs.github.io/highlight.min.js"
+    onload="hljs.initHighlightingOnLoad();"
+  ></script>
+
+  
+  <link
+    rel="icon"
+    href="https://cxljs.github.io/favicon.ico"
+  />
+  <link
+    rel="apple-touch-icon"
+    href="https://cxljs.github.io/apple-touch-icon.png"
+  />
+
+  <meta name="generator" content="Hugo 0.145.0">
+  <meta itemprop="name" content="JuiceFS 设计">
+  <meta itemprop="description" content="分布式文件系统的发展 分布式文件系统的难点 JuiceFS 存储文件数据 元数据结构设计 读写流程 分布式文件系统的发展 Google GFS 的发表应该是分布式文件系统发展的里程碑，Meta &#43; Data 的架构影响了后来的分布式系统设计。随后的 HDFS 是大数据时代最重要的存储系统之一，现在分布式文件系统最流行的2种接口协议是 POSIX 和 HDFS 接口协议。
+随着云原生和对象存储的发展，分布式系统的设计趋势是把数据放到对象存储，比如 autoMQ 把 Kafka 的数据放到对象存储，AWS 刚发布的基于对象存储的向量数据库。
+对分布式文件系统的需求也有变化，相比大数据时代，AI 训练存储的更多是中小文件，所以文件系统的元数据更多。
+分布式文件系统的难点 文件系统的元数据组成一个 DAG，分布式文件系统的难点在于：
+怎么存储这个 DAG？ 怎么高并发的读写这个 DAG？ 几种思路：
+整个 DAG 存储在单个节点，缺点是单节点容量有限，DAG size 成为系统瓶颈。 转化为 KV/Relation 存储在 KV/Relational DB。 设计一个可扩展的存储 DAG 的系统，把 DAG 划分存储到多个节点，目前没有这样做的开源项目(?)，但是有相关的论文，应该有公司实现了/在做这个。 不采用 Meta &#43; Data 架构，把 Meta 和 Data 混合存储。 JuiceFS JuiceFS 的元数据采用第2种思路，支持 TiKV/MySQL 等多个系统作为 Meta Service，甚至还支持 Redis (在一致性要求不高的场景使用)，数据放在对象存储。
+架构：
+app go-fuse --&gt; juicefs --&gt; local meta cache --&gt; meta service | | | syscall fd --&gt; local data cache --&gt; object storage service | | vfs --&gt; fuse 存储文件数据 当写文件时，元数据放在 Meta Service，数据放在对象存储。如果一个文件作为一个对象去存储，当读一部分/修改文件时，会有严重的读写放大，特别是大文件，所以需要把文件划分成多个对象去存储。">
+  <meta itemprop="datePublished" content="2025-08-01T19:06:59+08:00">
+  <meta itemprop="dateModified" content="2025-08-01T19:06:59+08:00">
+  <meta itemprop="wordCount" content="368"><meta property="og:url" content="https://cxljs.github.io/posts/juicefs/">
+  <meta property="og:site_name" content="cxljs">
+  <meta property="og:title" content="JuiceFS 设计">
+  <meta property="og:description" content="分布式文件系统的发展 分布式文件系统的难点 JuiceFS 存储文件数据 元数据结构设计 读写流程 分布式文件系统的发展 Google GFS 的发表应该是分布式文件系统发展的里程碑，Meta &#43; Data 的架构影响了后来的分布式系统设计。随后的 HDFS 是大数据时代最重要的存储系统之一，现在分布式文件系统最流行的2种接口协议是 POSIX 和 HDFS 接口协议。
+随着云原生和对象存储的发展，分布式系统的设计趋势是把数据放到对象存储，比如 autoMQ 把 Kafka 的数据放到对象存储，AWS 刚发布的基于对象存储的向量数据库。
+对分布式文件系统的需求也有变化，相比大数据时代，AI 训练存储的更多是中小文件，所以文件系统的元数据更多。
+分布式文件系统的难点 文件系统的元数据组成一个 DAG，分布式文件系统的难点在于：
+怎么存储这个 DAG？ 怎么高并发的读写这个 DAG？ 几种思路：
+整个 DAG 存储在单个节点，缺点是单节点容量有限，DAG size 成为系统瓶颈。 转化为 KV/Relation 存储在 KV/Relational DB。 设计一个可扩展的存储 DAG 的系统，把 DAG 划分存储到多个节点，目前没有这样做的开源项目(?)，但是有相关的论文，应该有公司实现了/在做这个。 不采用 Meta &#43; Data 架构，把 Meta 和 Data 混合存储。 JuiceFS JuiceFS 的元数据采用第2种思路，支持 TiKV/MySQL 等多个系统作为 Meta Service，甚至还支持 Redis (在一致性要求不高的场景使用)，数据放在对象存储。
+架构：
+app go-fuse --&gt; juicefs --&gt; local meta cache --&gt; meta service | | | syscall fd --&gt; local data cache --&gt; object storage service | | vfs --&gt; fuse 存储文件数据 当写文件时，元数据放在 Meta Service，数据放在对象存储。如果一个文件作为一个对象去存储，当读一部分/修改文件时，会有严重的读写放大，特别是大文件，所以需要把文件划分成多个对象去存储。">
+  <meta property="og:locale" content="en_us">
+  <meta property="og:type" content="article">
+    <meta property="article:section" content="posts">
+    <meta property="article:published_time" content="2025-08-01T19:06:59+08:00">
+    <meta property="article:modified_time" content="2025-08-01T19:06:59+08:00">
+
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="JuiceFS 设计">
+  <meta name="twitter:description" content="分布式文件系统的发展 分布式文件系统的难点 JuiceFS 存储文件数据 元数据结构设计 读写流程 分布式文件系统的发展 Google GFS 的发表应该是分布式文件系统发展的里程碑，Meta &#43; Data 的架构影响了后来的分布式系统设计。随后的 HDFS 是大数据时代最重要的存储系统之一，现在分布式文件系统最流行的2种接口协议是 POSIX 和 HDFS 接口协议。
+随着云原生和对象存储的发展，分布式系统的设计趋势是把数据放到对象存储，比如 autoMQ 把 Kafka 的数据放到对象存储，AWS 刚发布的基于对象存储的向量数据库。
+对分布式文件系统的需求也有变化，相比大数据时代，AI 训练存储的更多是中小文件，所以文件系统的元数据更多。
+分布式文件系统的难点 文件系统的元数据组成一个 DAG，分布式文件系统的难点在于：
+怎么存储这个 DAG？ 怎么高并发的读写这个 DAG？ 几种思路：
+整个 DAG 存储在单个节点，缺点是单节点容量有限，DAG size 成为系统瓶颈。 转化为 KV/Relation 存储在 KV/Relational DB。 设计一个可扩展的存储 DAG 的系统，把 DAG 划分存储到多个节点，目前没有这样做的开源项目(?)，但是有相关的论文，应该有公司实现了/在做这个。 不采用 Meta &#43; Data 架构，把 Meta 和 Data 混合存储。 JuiceFS JuiceFS 的元数据采用第2种思路，支持 TiKV/MySQL 等多个系统作为 Meta Service，甚至还支持 Redis (在一致性要求不高的场景使用)，数据放在对象存储。
+架构：
+app go-fuse --&gt; juicefs --&gt; local meta cache --&gt; meta service | | | syscall fd --&gt; local data cache --&gt; object storage service | | vfs --&gt; fuse 存储文件数据 当写文件时，元数据放在 Meta Service，数据放在对象存储。如果一个文件作为一个对象去存储，当读一部分/修改文件时，会有严重的读写放大，特别是大文件，所以需要把文件划分成多个对象去存储。">
+
+  <link rel="canonical" href="https://cxljs.github.io/posts/juicefs/" />
+</head>
+<body
+    class="bg-(--bg) text-black antialiased duration-200 ease-out [-webkit-tap-highlight-color:transparent] dark:text-white"
+  ><header
+  class="mx-auto flex h-[4.5rem] max-w-(--w) px-8 whitespace-nowrap lg:justify-center"
+>
+  <div class="relative z-50 flex items-center ltr:mr-auto rtl:ml-auto">
+    <a
+      class="-translate-y-[1px] text-2xl font-medium"
+      href="https://cxljs.github.io/"
+      >cxljs</a
+    >
+    <div
+      class="btn-dark text-[0px] ltr:ml-4 rtl:mr-4 h-6 w-6 shrink-0 cursor-pointer [background:url(./theme.png)_left_center/_auto_theme('spacing.6')_no-repeat] [transition:_background-position_0.4s_steps(5)] dark:[background-position:right]"
+      role="button"
+      aria-label="Dark"
+    ></div>
+  </div>
+
+  <div
+    class="btn-menu relative z-50 flex h-[4.5rem] w-[5rem] shrink-0 cursor-pointer flex-col items-center justify-center gap-2.5 lg:hidden ltr:-mr-8 rtl:-ml-8"
+    role="button"
+    aria-label="Menu"
+  ></div>
+
+  <script>
+    
+    const htmlClass = document.documentElement.classList;
+    setTimeout(() => {
+      htmlClass.remove('not-ready');
+    }, 10);
+
+    
+    const btnMenu = document.querySelector('.btn-menu');
+    btnMenu.addEventListener('click', () => {
+      htmlClass.toggle('open');
+    });
+
+    
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    const lightBg = '#faf8f1'.replace(/"/g, '');
+    const setDark = (isDark) => {
+      metaTheme.setAttribute('content', isDark ? '#000' : lightBg);
+      htmlClass[isDark ? 'add' : 'remove']('dark');
+      localStorage.setItem('dark', isDark);
+    };
+
+    
+    const darkScheme = window.matchMedia('(prefers-color-scheme: dark)');
+    if (htmlClass.contains('dark')) {
+      setDark(true);
+    } else {
+      const darkVal = localStorage.getItem('dark');
+      setDark(darkVal ? darkVal === 'true' : darkScheme.matches);
+    }
+
+    
+    darkScheme.addEventListener('change', (event) => {
+      setDark(event.matches);
+    });
+
+    
+    const btnDark = document.querySelector('.btn-dark');
+    btnDark.addEventListener('click', () => {
+      setDark(localStorage.getItem('dark') !== 'true');
+    });
+  </script>
+
+  <div
+    class="nav-wrapper fixed inset-x-0 top-full z-40 flex h-full flex-col justify-center bg-(--bg) pb-16 duration-200 select-none lg:static lg:h-auto lg:flex-row lg:bg-transparent! lg:pb-0 lg:transition-none"
+  >
+  </div>
+</header>
+<main
+      class="prose prose-neutral dark:prose-invert relative mx-auto min-h-[calc(100vh-9rem)] max-w-(--w) px-8 pt-14 pb-16"
+    ><article>
+  <header class="mb-14">
+    <h1 class="my-0! pb-2.5">JuiceFS 设计</h1><div class="text-xs antialiased opacity-60"><time>Aug 1, 2025</time></div></header>
+
+  <section><ul>
+<li><a href="#%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84%E5%8F%91%E5%B1%95">分布式文件系统的发展</a></li>
+<li><a href="#%E5%88%86%E5%B8%83%E5%BC%8F%E6%96%87%E4%BB%B6%E7%B3%BB%E7%BB%9F%E7%9A%84%E9%9A%BE%E7%82%B9">分布式文件系统的难点</a></li>
+<li><a href="#juicefs">JuiceFS</a>
+<ul>
+<li><a href="#%E5%AD%98%E5%82%A8%E6%96%87%E4%BB%B6%E6%95%B0%E6%8D%AE">存储文件数据</a></li>
+<li><a href="#%E5%85%83%E6%95%B0%E6%8D%AE%E7%BB%93%E6%9E%84%E8%AE%BE%E8%AE%A1">元数据结构设计</a></li>
+<li><a href="#%E8%AF%BB%E5%86%99%E6%B5%81%E7%A8%8B">读写流程</a></li>
+</ul>
+</li>
+</ul>
+<h1 id="分布式文件系统的发展">分布式文件系统的发展</h1>
+<p>Google GFS 的发表应该是分布式文件系统发展的里程碑，Meta + Data 的架构影响了后来的分布式系统设计。随后的 HDFS 是大数据时代最重要的存储系统之一，现在分布式文件系统最流行的2种接口协议是 POSIX 和 HDFS 接口协议。</p>
+<p>随着云原生和对象存储的发展，分布式系统的设计趋势是把数据放到对象存储，比如 autoMQ 把 Kafka 的数据放到对象存储，AWS 刚发布的基于对象存储的向量数据库。</p>
+<p>对分布式文件系统的需求也有变化，相比大数据时代，AI 训练存储的更多是中小文件，所以文件系统的元数据更多。</p>
+<h1 id="分布式文件系统的难点">分布式文件系统的难点</h1>
+<p>文件系统的元数据组成一个 DAG，分布式文件系统的难点在于：</p>
+<ol>
+<li>怎么存储这个 DAG？</li>
+<li>怎么高并发的读写这个 DAG？</li>
+</ol>
+<p>几种思路：</p>
+<ol>
+<li>整个 DAG 存储在单个节点，缺点是单节点容量有限，DAG size 成为系统瓶颈。</li>
+<li>转化为 KV/Relation 存储在 KV/Relational DB。</li>
+<li>设计一个可扩展的存储 DAG 的系统，把 DAG 划分存储到多个节点，目前没有这样做的开源项目(?)，但是有相关的论文，应该有公司实现了/在做这个。</li>
+<li>不采用 Meta + Data 架构，把 Meta 和 Data 混合存储。</li>
+</ol>
+<h1 id="juicefs">JuiceFS</h1>
+<p>JuiceFS 的元数据采用第2种思路，支持 TiKV/MySQL 等多个系统作为 Meta Service，甚至还支持 Redis (在一致性要求不高的场景使用)，数据放在对象存储。</p>
+<p>架构：</p>
+<pre tabindex="0"><code>app         go-fuse --&gt; juicefs --&gt; local meta cache --&gt; meta service
+ |            |            |
+syscall      fd             --&gt; local data cache --&gt; object storage service
+ |            |
+vfs    --&gt;   fuse
+</code></pre><h2 id="存储文件数据">存储文件数据</h2>
+<p>当写文件时，元数据放在 Meta Service，数据放在对象存储。如果一个文件作为一个对象去存储，当读一部分/修改文件时，会有严重的读写放大，特别是大文件，所以需要把文件划分成多个对象去存储。</p>
+<p>JuiceFS 设计了3个概念：chunk, slice, block：</p>
+<ul>
+<li>文件逻辑上划分成多个 chunk，chunk size = 64MB</li>
+<li>chunk 会有一次或多次写，对 chunk 的每次写为一个 slice，slice = (chunk id, offset, size, data) 存储在 local data cache，多次写可能有重叠，所以还要记录 slice 顺序，以最新的为准。跨 chunk 的写会拆分成多个 slice</li>
+<li>把 local data cache 的 slice 存储到对象存储时，把一个 slice 作为一个对象去存储？为了提高 slice 写到对象存储的速度，把 slice 划分成多个 block (block size 最大为 4M) 并发写入</li>
+</ul>
+<p>所以对象存储的对象是一个个 &lt;= 4M 的 block。</p>
+<p>对象名：<code>${fsname}/chunks/${hash}/${basename}</code>:</p>
+<ul>
+<li>fsname: 用户定义的文件系统名字</li>
+<li>hash: hash_func(basename)，为了做隔离</li>
+<li>basename: 对象的有效名字，格式是 <code>${slice_id}_${index}_${block_size}</code>，index 是 block 在 slice 的序号，范围 [0,15]</li>
+</ul>
+<p>多个写的重叠会产生垃圾 slice -&gt; 产生垃圾 block，需要删除，还可以做合并碎片等设计。</p>
+<p>上面说每次写是一个 slice，实际上由于有 local data cache，JuiceFS 做了一些优化，比如一次写后，slice 还没有上传到对象存储，此时有新的写操作和它重叠或连续，会直接修改它，不创建新 slice。</p>
+<h2 id="元数据结构设计">元数据结构设计</h2>
+<p>JuiceFS 元数据：</p>
+<ul>
+<li>系统元数据</li>
+<li>各种计数值：下个可用的 inode id, slice id, session id, &amp;c</li>
+<li>session: client id, info 和超时时间</li>
+<li>inode attr：type, nlink, uid, parent inode id, &amp;c</li>
+<li>file inode data (chunk): (inode id, index) -&gt; []sliceMeta</li>
+<li>dir inode data (DAG edge)：(parent inode id, name) -&gt; (type, inode id)，即(目录 inode id, 子 inode 名字) -&gt; (子 inode type, id)</li>
+<li>plock: (inode, session id, owner) -&gt; []plock record</li>
+<li>&amp;c</li>
+</ul>
+<p>JuiceFS 需要设计合理的数据结构，把元数据放到 TiKV/MySQL/Redis 等。</p>
+<p>Redis：</p>
+<ul>
+<li>系统元数据：string KV 方式：<code>setting</code> -&gt; json string</li>
+<li>各种计数值：string KV 方式：<code>nextInode</code> -&gt; num, <code>nextSliceId</code> -&gt; num, &amp;c</li>
+<li>session
+<ul>
+<li>session timeout: <code>allSessions</code> -&gt; a sorted set {member: client id, score: timeout timestamp}</li>
+<li>session info: <code>sessionInfos</code> -&gt; a hash table {client id -&gt; json string}</li>
+</ul>
+</li>
+<li>inode attr: string KV: <code>i${inode_id}</code> -&gt; 二进制编码的 attr struct</li>
+<li>chunk: <code>c${inode_id}_{chunk_index}</code> -&gt; list {二进制编码的 sliceMeta struct}</li>
+<li>edge: <code>d${inode_id}</code> -&gt; a hash table {name -&gt; 二进制编码的 (type, inode_id)}</li>
+<li>&amp;c</li>
+</ul>
+<h2 id="读写流程">读写流程</h2>
+<p>root inode id = 1, 给定一个路径，我们能够找到 inode_id/attr。</p>
+<p>前面提到文件数据 block 名字的设计：<code>${fsname}/chunks/${hash}/${basename}</code>:</p>
+<ul>
+<li>fsname: 用户定义的文件系统名字</li>
+<li>hash: hash_func(basename)，为了做隔离</li>
+<li>basename: 对象的有效名字，格式是 <code>${slice_id}_${index}_${block_size}</code>，index 是 block 在 slice 的序号，范围 [0,15]</li>
+</ul>
+<p>读文件流程：</p>
+<ol>
+<li>根据路径找到 inode_id, size(in attr)</li>
+<li>计算要读的 chunk_index, <code>c${inode_id}_{chunk_index}</code> 获取 slice meta list</li>
+<li>计算要读的位置在哪些 slices，在 slice 内的 index，<code>${slice_id}_${index}_${size}</code> 读取 block，得到数据，拼接</li>
+</ol>
+<p>WIP: 上面讲了 JuiceFS 的总体设计，主要是为了我自己能够梳理一下，看看从总体上有没有可以改进的点。有时间再接着补充详细的设计。</p>
+</section>
+
+  <nav
+    class="mt-24 flex overflow-hidden rounded-xl bg-black/[3%] text-lg leading-[1.2]! *:flex *:w-1/2 *:items-center *:p-5 *:font-medium *:no-underline dark:bg-white/[8%] [&>*:hover]:bg-black/[2%] dark:[&>*:hover]:bg-white/[3%]"
+  ><a
+      class="justify-end pl-3 ltr:ml-auto rtl:mr-auto"
+      href="https://cxljs.github.io/posts/leveldb-1-wal/"
+      ><span>LevelDB #1 WAL</span><span class="ltr:ml-1.5 rtl:mr-1.5">→</span></a
+    ></nav></article></main><footer
+  class="mx-auto flex h-[4.5rem] max-w-(--w) items-center px-8 text-xs tracking-wider uppercase opacity-60"
+>
+  <div class="mr-auto">&copy;2025<a class="link" href="https://cxljs.github.io/">cxljs</a></div>
+  <a class="link mx-6" href="https://gohugo.io/" rel="noopener" target="_blank"
+    >powered by hugo️️</a
+  >️
+  <a
+    class="link"
+    href="https://github.com/nanxiaobei/hugo-paper"
+    rel="noopener"
+    target="_blank"
+    >hugo-paper</a
+  >
+</footer>
+</body>
+</html>
